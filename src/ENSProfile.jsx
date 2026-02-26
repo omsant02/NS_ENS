@@ -71,7 +71,7 @@ function ENSProfile({ defaultENS }) {
   return (
     <div style={{ 
       maxWidth: '600px', 
-      margin: '50px auto', 
+      margin: 'auto', 
       padding: '20px',
       fontFamily: 'system-ui, -apple-system, sans-serif'
     }}>
