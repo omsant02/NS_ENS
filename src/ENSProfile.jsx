@@ -1,14 +1,16 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
 
-function ENSProfile() {
-  const [ensName, setEnsName] = useState('');
+function ENSProfile({ defaultENS }) {
+  const [ensName, setEnsName] = useState(defaultENS || '');
   const [profile, setProfile] = useState(null);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
   const lookupENS = async () => {
-    if (!ensName.trim()) {
+    const nameToLookup = ensName.trim() || defaultENS;
+    
+    if (!nameToLookup) {
       setError('Please enter an ENS name');
       return;
     }
@@ -20,7 +22,7 @@ function ENSProfile() {
     try {
       const provider = new ethers.JsonRpcProvider(import.meta.env.VITE_RPC_URL);
       
-      const address = await provider.resolveName(ensName);
+      const address = await provider.resolveName(nameToLookup);
       
       if (!address) {
         setError('ENS name not found');
@@ -28,7 +30,7 @@ function ENSProfile() {
         return;
       }
 
-      const resolver = await provider.getResolver(ensName);
+      const resolver = await provider.getResolver(nameToLookup);
       
       const avatar = await resolver?.getAvatar();
       const email = await resolver?.getText('email');
@@ -38,7 +40,7 @@ function ENSProfile() {
       const description = await resolver?.getText('description');
 
       setProfile({
-        ensName,
+        ensName: nameToLookup,
         address,
         avatar: avatar?.url || null,
         email: email || 'Not set',
@@ -54,6 +56,17 @@ function ENSProfile() {
       setLoading(false);
     }
   };
+
+  // Auto-lookup when defaultENS is provided
+  useEffect(() => {
+    if (defaultENS) {
+      setEnsName(defaultENS);
+      // Small delay to ensure state is set
+      setTimeout(() => {
+        lookupENS();
+      }, 100);
+    }
+  }, [defaultENS]);
 
   return (
     <div style={{ 
