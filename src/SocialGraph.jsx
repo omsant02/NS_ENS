@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { ethers } from 'ethers';
 import ForceGraph2D from 'react-force-graph-2d';
 
@@ -7,16 +7,48 @@ function SocialGraph({ onNodeClick, persistedGraphData, onGraphDataChange, persi
   const [graphData, setGraphData] = useState(persistedGraphData);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [addEdgeMode, setAddEdgeMode] = useState(false);
+  const [selectedNode, setSelectedNode] = useState(null);
+  const forceRef = useRef();
 
-  // Load persisted data when component mounts
+  const BACKEND_URL = import.meta.env.VITE_BACKEND_URL || 'http://127.0.0.1:8000';
+
+  // Load persisted data and edges from backend
   useEffect(() => {
     if (persistedGraphData.nodes.length > 0) {
       setGraphData(persistedGraphData);
+      loadEdgesFromBackend();
     }
     if (persistedInput) {
       setEnsInput(persistedInput);
     }
   }, [persistedGraphData, persistedInput]);
+
+  // Add repulsion force between nodes
+  useEffect(() => {
+    if (forceRef.current) {
+      forceRef.current.d3Force('charge').strength(-300);
+      forceRef.current.d3Force('link').distance(150);
+    }
+  }, [graphData]);
+
+  const loadEdgesFromBackend = async () => {
+    try {
+      const response = await fetch(`${BACKEND_URL}/api/edges/`);
+      const edges = await response.json();
+      
+      // Convert backend format to graph format
+      const links = edges.map(edge => ({
+        source: edge.from_ens,
+        target: edge.to_ens,
+        id: edge.id
+      }));
+      
+      setGraphData(prev => ({ ...prev, links }));
+    } catch (err) {
+      console.error('Failed to load edges:', err);
+    }
+  };
 
   const handleInputChange = (newValue) => {
     setEnsInput(newValue);
@@ -56,7 +88,7 @@ function SocialGraph({ onNodeClick, persistedGraphData, onGraphDataChange, persi
               name: ensName,
               address: address,
               avatar: avatar?.url || null,
-              val: 15
+              val: 20
             });
           }
         } catch (err) {
@@ -73,10 +105,12 @@ function SocialGraph({ onNodeClick, persistedGraphData, onGraphDataChange, persi
       const newGraphData = { nodes, links: [] };
       setGraphData(newGraphData);
       
-      // Persist to parent
       if (onGraphDataChange) {
         onGraphDataChange(newGraphData);
       }
+      
+      // Load edges after nodes are loaded
+      await loadEdgesFromBackend();
     } catch (err) {
       console.error(err);
       setError('Failed to fetch ENS data');
@@ -92,9 +126,62 @@ function SocialGraph({ onNodeClick, persistedGraphData, onGraphDataChange, persi
     fetchENSProfiles(exampleNames);
   };
 
-  const handleNodeClick = (node) => {
-    if (onNodeClick) {
-      onNodeClick(node.id);
+  const handleNodeClickInternal = async (node) => {
+    if (addEdgeMode) {
+      // Edge creation mode
+      if (!selectedNode) {
+        setSelectedNode(node.id);
+      } else if (selectedNode === node.id) {
+        // Clicked same node, cancel
+        setSelectedNode(null);
+      } else {
+        // Create edge
+        await createEdge(selectedNode, node.id);
+        setSelectedNode(null);
+        setAddEdgeMode(false);
+      }
+    } else {
+      // Normal mode - route to profile
+      if (onNodeClick) {
+        onNodeClick(node.id);
+      }
+    }
+  };
+
+  const createEdge = async (fromEns, toEns) => {
+    try {
+      const response = await fetch(`${BACKEND_URL}/api/edges/`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ from_ens: fromEns, to_ens: toEns })
+      });
+
+      if (response.ok) {
+        await loadEdgesFromBackend();
+      } else {
+        const data = await response.json();
+        setError(data.error || 'Failed to create connection');
+        setTimeout(() => setError(''), 3000);
+      }
+    } catch (err) {
+      console.error('Failed to create edge:', err);
+      setError('Failed to create connection');
+      setTimeout(() => setError(''), 3000);
+    }
+  };
+
+  const handleLinkClick = async (link) => {
+    if (window.confirm(`Delete connection between ${link.source.id} and ${link.target.id}?`)) {
+      try {
+        await fetch(`${BACKEND_URL}/api/edges/${link.id}/`, {
+          method: 'DELETE'
+        });
+        await loadEdgesFromBackend();
+      } catch (err) {
+        console.error('Failed to delete edge:', err);
+        setError('Failed to delete connection');
+        setTimeout(() => setError(''), 3000);
+      }
     }
   };
 
@@ -165,6 +252,27 @@ function SocialGraph({ onNodeClick, persistedGraphData, onGraphDataChange, persi
           >
             Load Example
           </button>
+          <button
+            onClick={() => {
+              setAddEdgeMode(!addEdgeMode);
+              setSelectedNode(null);
+            }}
+            disabled={loading || graphData.nodes.length === 0}
+            style={{
+              padding: '12px 24px',
+              fontSize: '16px',
+              backgroundColor: addEdgeMode ? '#dc3545' : '#ff9800',
+              color: 'white',
+              border: 'none',
+              borderRadius: '8px',
+              cursor: (loading || graphData.nodes.length === 0) ? 'not-allowed' : 'pointer',
+              opacity: (loading || graphData.nodes.length === 0) ? 0.6 : 1,
+              fontWeight: '600',
+              whiteSpace: 'nowrap'
+            }}
+          >
+            {addEdgeMode ? 'Cancel' : 'Add Connection'}
+          </button>
         </div>
 
         <p style={{ 
@@ -173,7 +281,12 @@ function SocialGraph({ onNodeClick, persistedGraphData, onGraphDataChange, persi
           fontSize: '14px',
           margin: '10px 0 0 0'
         }}>
-          💡 Click any node to view their profile
+          {addEdgeMode 
+            ? (selectedNode 
+                ? `📍 Click another node to connect with ${selectedNode}` 
+                : '📍 Click a node to start creating a connection')
+            : '💡 Click any node to view their profile • Click "Add Connection" to create edges'
+          }
         </p>
 
         {error && (
@@ -186,6 +299,19 @@ function SocialGraph({ onNodeClick, persistedGraphData, onGraphDataChange, persi
             border: '1px solid #fcc'
           }}>
             {error}
+            <button 
+              onClick={() => setError('')}
+              style={{ 
+                marginLeft: '10px', 
+                background: 'none', 
+                border: 'none', 
+                color: '#c00', 
+                cursor: 'pointer',
+                fontWeight: 'bold'
+              }}
+            >
+              ✕
+            </button>
           </div>
         )}
       </div>
@@ -200,37 +326,72 @@ function SocialGraph({ onNodeClick, persistedGraphData, onGraphDataChange, persi
           overflow: 'hidden'
         }}>
           <ForceGraph2D
+            ref={forceRef}
             graphData={graphData}
             nodeLabel="name"
             nodeAutoColorBy="id"
             nodeCanvasObject={(node, ctx, globalScale) => {
               const label = node.name;
-              const fontSize = 12/globalScale;
-              ctx.font = `${fontSize}px Sans-Serif`;
+              const fontSize = 14/globalScale;
+              const isSelected = node.id === selectedNode;
               
+              ctx.font = `bold ${fontSize}px Sans-Serif`;
+              
+              // Draw circle with better border
               ctx.beginPath();
               ctx.arc(node.x, node.y, node.val, 0, 2 * Math.PI, false);
               ctx.fillStyle = node.color;
               ctx.fill();
-              ctx.strokeStyle = '#fff';
-              ctx.lineWidth = 2;
+              
+              // Highlight selected node
+              if (isSelected) {
+                ctx.strokeStyle = '#ff9800';
+                ctx.lineWidth = 6;
+              } else {
+                ctx.strokeStyle = '#fff';
+                ctx.lineWidth = 3;
+              }
               ctx.stroke();
+              
+              // Draw label with background
+              ctx.fillStyle = 'rgba(255, 255, 255, 0.9)';
+              const textWidth = ctx.measureText(label).width;
+              ctx.fillRect(
+                node.x - textWidth/2 - 4,
+                node.y + node.val + 8,
+                textWidth + 8,
+                fontSize + 6
+              );
               
               ctx.textAlign = 'center';
               ctx.textBaseline = 'middle';
               ctx.fillStyle = '#333';
-              ctx.fillText(label, node.x, node.y + node.val + 10);
+              ctx.fillText(label, node.x, node.y + node.val + 18);
             }}
-            onNodeClick={handleNodeClick}
+            onNodeClick={handleNodeClickInternal}
+            onLinkClick={handleLinkClick}
             nodePointerAreaPaint={(node, color, ctx) => {
               ctx.fillStyle = color;
               ctx.beginPath();
               ctx.arc(node.x, node.y, node.val * 1.5, 0, 2 * Math.PI, false);
               ctx.fill();
             }}
-            enableNodeDrag={true}
+            // Better link styling
+            linkWidth={4}
+            linkColor={() => '#4CAF50'}
+            linkDirectionalParticles={4}
+            linkDirectionalParticleWidth={4}
+            linkDirectionalParticleSpeed={0.006}
+            linkDirectionalParticleColor={() => '#2196F3'}
+            // Better physics for spacing
+            d3AlphaDecay={0.02}
+            d3VelocityDecay={0.3}
+            cooldownTicks={100}
+            // Better initial positioning
+            enableNodeDrag={!addEdgeMode}
             enableZoomInteraction={true}
             enablePanInteraction={true}
+            nodeRelSize={8}
           />
         </div>
       )}
