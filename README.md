@@ -1,16 +1,91 @@
-# React + Vite
+# ENS Social Network
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+A full-stack decentralized social network visualizer built on Ethereum Name Service (ENS).
 
-Currently, two official plugins are available:
+<img width="1495" height="819" alt="image" src="https://github.com/user-attachments/assets/b6570ac9-95af-4fd7-b712-80a2ac0c8ea3" />
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) (or [oxc](https://oxc.rs) when used in [rolldown-vite](https://vite.dev/guide/rolldown)) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+<img width="1506" height="843" alt="image" src="https://github.com/user-attachments/assets/d0f4c739-d6a9-4628-8505-d30d78103c51" />
 
-## React Compiler
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
 
-## Expanding the ESLint configuration
+## 🌟 Features
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+- **ENS Profile Viewer**: Look up any ENS name and view their profile information including address, avatar, social links
+- **Social Network Graph**: Visualize multiple ENS identities as an interactive force-directed graph
+- **Editable Connections**: Create and delete friendship connections between ENS identities
+- **Persistent Storage**: All connections are stored in a PostgreSQL database
+
+## 🚀 Live Demo
+
+**Frontend:** https://ns-ens-kohl.vercel.app  
+**Backend API:** https://ns-ens-backend.vercel.app/api/edges/
+
+## 🛠️ Tech Stack
+
+- React + Vite
+- ethers.js (Ethereum/ENS integration)
+- react-force-graph-2d (Graph visualization)
+- Django REST API backend
+- PostgreSQL (Neon)
+
+## 📦 Installation
+```bash
+# Clone repository
+git clone https://github.com/omsant02/NS_ENS.git
+cd NS_ENS
+
+# Install dependencies
+npm install
+
+# Create .env file
+echo "VITE_RPC_URL=your_ethereum_rpc_url" > .env
+echo "VITE_BACKEND_URL=http://127.0.0.1:8000" >> .env
+
+# Run development server
+npm run dev
+```
+
+## 🎯 Usage
+
+1. **View a Profile**: Enter any ENS name (e.g., `vitalik.eth`) and click "Lookup"
+2. **Visualize Network**: Enter multiple ENS names separated by commas, or click "Load Example"
+3. **Add Connection**: Click "Add Connection" → Click two nodes to create an edge
+4. **Delete Connection**: Click any edge and confirm deletion
+
+## 📝 Environment Variables
+```
+VITE_RPC_URL=your_ethereum_rpc_url
+VITE_BACKEND_URL=your_backend_url
+```
+
+## 🏗️ Project Structure
+```
+src/
+├── App.jsx              # Main app component with routing
+├── ENSProfile.jsx       # Profile viewer component
+├── SocialGraph.jsx      # Graph visualization component
+└── main.jsx            # App entry point
+```
+
+## 🚢 Deployment
+
+Deployed on Vercel. Environment variables are configured in Vercel dashboard.
+```bash
+# Deploy
+git push origin main
+# Vercel auto-deploys on push
+```
+
+## 🔗 Related
+
+- Backend Repository: https://github.com/omsant02/NS_ENS_BACKEND
+- ENS Documentation: https://docs.ens.domains
+
+## 👤 Author
+
+**Om Santoshwar**  
+GitHub: [@omsant02](https://github.com/omsant02)
+
+## 📄 License
+
+MIT
