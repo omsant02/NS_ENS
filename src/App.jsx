@@ -5,6 +5,8 @@ import SocialGraph from './SocialGraph';
 function App() {
   const [currentView, setCurrentView] = useState('graph');
   const [selectedENS, setSelectedENS] = useState('');
+  const [persistedGraphData, setPersistedGraphData] = useState({ nodes: [], links: [] });
+  const [persistedInput, setPersistedInput] = useState(''); // NEW: persist input text
 
   const handleNodeClick = (ensName) => {
     setSelectedENS(ensName);
@@ -13,6 +15,14 @@ function App() {
 
   const goToGraph = () => {
     setCurrentView('graph');
+  };
+
+  const handleGraphDataChange = (newGraphData) => {
+    setPersistedGraphData(newGraphData);
+  };
+
+  const handleInputChange = (newInput) => { // NEW: callback to persist input
+    setPersistedInput(newInput);
   };
 
   return (
@@ -74,7 +84,13 @@ function App() {
       {/* Main Content */}
       <div style={{ width: '100%', height: '100%' }}>
         {currentView === 'graph' ? (
-          <SocialGraph onNodeClick={handleNodeClick} />
+          <SocialGraph 
+            onNodeClick={handleNodeClick} 
+            persistedGraphData={persistedGraphData}
+            onGraphDataChange={handleGraphDataChange}
+            persistedInput={persistedInput}
+            onInputChange={handleInputChange}
+          />
         ) : (
           <ENSProfile defaultENS={selectedENS} />
         )}

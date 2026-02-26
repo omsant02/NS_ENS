@@ -1,15 +1,31 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ethers } from 'ethers';
 import ForceGraph2D from 'react-force-graph-2d';
 
-function SocialGraph({ onNodeClick }) {
-  const [ensInput, setEnsInput] = useState('');
-  const [graphData, setGraphData] = useState({ nodes: [], links: [] });
+function SocialGraph({ onNodeClick, persistedGraphData, onGraphDataChange, persistedInput, onInputChange }) {
+  const [ensInput, setEnsInput] = useState(persistedInput || '');
+  const [graphData, setGraphData] = useState(persistedGraphData);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
+  // Load persisted data when component mounts
+  useEffect(() => {
+    if (persistedGraphData.nodes.length > 0) {
+      setGraphData(persistedGraphData);
+    }
+    if (persistedInput) {
+      setEnsInput(persistedInput);
+    }
+  }, [persistedGraphData, persistedInput]);
+
+  const handleInputChange = (newValue) => {
+    setEnsInput(newValue);
+    if (onInputChange) {
+      onInputChange(newValue);
+    }
+  };
+
   const fetchENSProfiles = async (namesToFetch) => {
-    // Use provided names or parse from input
     const ensNames = namesToFetch || ensInput
       .split(',')
       .map(name => name.trim())
@@ -27,7 +43,6 @@ function SocialGraph({ onNodeClick }) {
       const provider = new ethers.JsonRpcProvider(import.meta.env.VITE_RPC_URL);
       const nodes = [];
 
-      // Fetch each ENS profile
       for (const ensName of ensNames) {
         try {
           const address = await provider.resolveName(ensName);
@@ -41,7 +56,7 @@ function SocialGraph({ onNodeClick }) {
               name: ensName,
               address: address,
               avatar: avatar?.url || null,
-              val: 15 // Node size
+              val: 15
             });
           }
         } catch (err) {
@@ -55,8 +70,13 @@ function SocialGraph({ onNodeClick }) {
         return;
       }
 
-      // No links yet - Step 3 will add editable edges
-      setGraphData({ nodes, links: [] });
+      const newGraphData = { nodes, links: [] };
+      setGraphData(newGraphData);
+      
+      // Persist to parent
+      if (onGraphDataChange) {
+        onGraphDataChange(newGraphData);
+      }
     } catch (err) {
       console.error(err);
       setError('Failed to fetch ENS data');
@@ -67,12 +87,12 @@ function SocialGraph({ onNodeClick }) {
 
   const loadExample = () => {
     const exampleNames = ['vitalik.eth', 'balajis.eth', 'nick.eth'];
-    setEnsInput(exampleNames.join(', '));
+    const inputText = exampleNames.join(', ');
+    handleInputChange(inputText);
     fetchENSProfiles(exampleNames);
   };
 
   const handleNodeClick = (node) => {
-    // Call parent's onNodeClick to route to profile
     if (onNodeClick) {
       onNodeClick(node.id);
     }
@@ -97,7 +117,7 @@ function SocialGraph({ onNodeClick }) {
           <input
             type="text"
             value={ensInput}
-            onChange={(e) => setEnsInput(e.target.value)}
+            onChange={(e) => handleInputChange(e.target.value)}
             placeholder="Enter ENS names separated by commas (e.g., vitalik.eth, balajis.eth, nick.eth)"
             style={{
               flex: 1,
@@ -188,7 +208,6 @@ function SocialGraph({ onNodeClick }) {
               const fontSize = 12/globalScale;
               ctx.font = `${fontSize}px Sans-Serif`;
               
-              // Draw circle
               ctx.beginPath();
               ctx.arc(node.x, node.y, node.val, 0, 2 * Math.PI, false);
               ctx.fillStyle = node.color;
@@ -197,7 +216,6 @@ function SocialGraph({ onNodeClick }) {
               ctx.lineWidth = 2;
               ctx.stroke();
               
-              // Draw label
               ctx.textAlign = 'center';
               ctx.textBaseline = 'middle';
               ctx.fillStyle = '#333';
