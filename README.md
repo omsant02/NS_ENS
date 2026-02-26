@@ -2,7 +2,8 @@
 
 A full-stack decentralized social network visualizer built on Ethereum Name Service (ENS).
 
-<img width="1495" height="819" alt="image" src="https://github.com/user-attachments/assets/b6570ac9-95af-4fd7-b712-80a2ac0c8ea3" />
+<img width="1483" height="818" alt="image" src="https://github.com/user-attachments/assets/dc1dec5d-9459-49ed-b168-f407704cab9d" />
+
 
 <img width="1506" height="843" alt="image" src="https://github.com/user-attachments/assets/d0f4c739-d6a9-4628-8505-d30d78103c51" />
 
